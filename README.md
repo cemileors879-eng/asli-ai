@@ -17,7 +17,7 @@ Türkçe yazılı ve sesli yapay zekâ asistanı. GitHub Pages üzerinde çalı�
 
 Qwen3 0.6B / 1.7B küçük bir modeldir; Türkçe kalitesi, muhakemesi ve bilgisi sınırlıdır. İnternet araması, güncel veri erişimi veya arka planda görev yürütme yapmaz. Yanıt hızı ve çalışabilirlik cihazın belleğine, tarayıcısına ve işlem gücüne bağlıdır. Uzun konuşmalarda modele son mesajların sınırlı bir bölümü verilir.
 
-Yazılı sohbetin model çıkarımı cihazda yapılır. Model dosyaları Hugging Face, çalışma kitaplığı ve WebAssembly dosyaları jsDelivr üzerinden alınır. Yazı tipleri Google Fonts'tan yüklenir. Bu kaynaklara sohbet metni gönderilmez. Mikrofonun Web Speech tanıması tarayıcı sağlayıcısının sunucularını kullanabilir. Seslendirme cihazın sunduğu Türkçe sese bağlıdır; özel veya klonlanmış bir ses değildir.
+Cihaz modunda yazılı sohbetin model çıkarımı cihazda yapılır. Model dosyaları Hugging Face, çalışma kitaplığı ve WebAssembly dosyaları jsDelivr üzerinden alınır. Yazı tipleri Google Fonts'tan yüklenir. Bu kaynaklara sohbet metni gönderilmez. Mikrofonun Web Speech tanıması tarayıcı sağlayıcısının sunucularını kullanabilir. Seslendirme cihazın sunduğu Türkçe sese bağlıdır; özel veya klonlanmış bir ses değildir.
 
 Geçmiş kaydı varsayılan olarak kapalıdır. Kayıt açıldığında son 12 sohbetin her birinden son 80 mesaj tarayıcının localStorage alanına yazılır. Bu, cihazda uygulamaya özel şifrelenmemiş bir kayıttır. Kayıt kapatıldığında kalıcı sohbet geçmişi silinir. Model önbelleği ve ses ayarları sohbet geçmişinden ayrıdır. Model dosyalarını silmek için tarayıcının bu siteye ait depolamasını temizleyin.
 
@@ -27,7 +27,7 @@ Depo kökündeki dosyalar doğrudan statik olarak sunulur. Derleme adımı veya 
 
 ```sh
 python -m http.server 8000 
-node --test core.test.mjs
+node --test core.test.mjs cloud.test.mjs
 ```
 
 GitHub Pages: Settings → Pages → Deploy from a branch → `main` → `/ (root)`. Yayın doğrudan depo kökündeki statik dosyalardan yapılır. `.nojekyll` dosyası Pages için korunur.
@@ -40,3 +40,8 @@ Bağımlılıklar sürümlere sabitlenmiştir: Transformers.js 3.8.1 ve Qwen3 ON
 - https://huggingface.co/docs/transformers.js/v3.8.1/en/pipelines
 - https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition
 - https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis
+
+
+## Gelişmiş sohbet
+
+“Gelişmiş sohbet” düğmesiyle Puter hesabına bağlanarak GPT-5.4 Nano kullanılabilir. Bu seçenek model indirmesi gerektirmez; mesajlar Puter ve model sağlayıcısına iletilir. Puter oturumu kullanıcı tıklamasıyla açılır; bağlantı kurulunca önceki sohbetin aktarılmaması için yeni sohbet başlatılır. Kullanım kullanıcının Puter hesabına aittir; ücretsiz kota sınırlıdır ve ek kullanım ücretli olabilir. Durdurmak sağlayıcıya ulaşmış isteğin ücretlendirmesini tamamen iptal etmeyebilir. Sağlayıcı hesap bağlantısı gerektirdiğinden canlı bulut yanıtı bu oturumda doğrulanmadı. Kota bilgisi: https://docs.puter.com/user-pays-model/

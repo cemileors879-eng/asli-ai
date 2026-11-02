@@ -7,3 +7,4 @@
 @media(max-width:360px){.topbar{padding:10px 12px}.topbar-name{gap:5px}.topbar-name #engine-status{max-width:86px;line-height:1.4}.content-scroll{padding:10px 18px 16px}h1{font-size:29px}.setup-copy span{max-width:175px}.primary-button{padding:8px 10px;font-size:11px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 progress::-webkit-progress-bar{background:#e7e0f0;border-radius:8px}progress::-webkit-progress-value{background:var(--accent);border-radius:8px}progress::-moz-progress-bar{background:var(--accent);border-radius:8px}
+.cloud-upgrade{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);padding:4px 1px 8px;flex-wrap:wrap}.cloud-upgrade .inline-button{font-weight:600;color:var(--accent);min-height:32px}.cloud-upgrade span{font-size:11px}.cloud-upgrade:has(+.setup:not([hidden])){padding-bottom:0}
