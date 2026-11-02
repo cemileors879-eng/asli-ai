@@ -4,7 +4,9 @@ Türkçe yazılı ve sesli yapay zekâ asistanı. GitHub Pages üzerinde çalı�
 
 ## Kullanım
 
-“Aslı’yı başlat” düğmesi model dosyalarını indirir. İlk indirme cihaza göre 650 MB–1,5 GB'tır; tarayıcı önbelleği sonraki başlatmaları hızlandırır. Model hazırlanırken sekmeyi açık tutun. WebGPU ve shader-f16 destekleyen cihazlarda 1.7B model (yaklaşık 1,5 GB indirme), diğerlerinde tek iş parçacıklı WebAssembly ile 0.6B model (yaklaşık 650 MB indirme) kullanılır. WebGPU başlatılamazsa 0.6B modele geçilir; bu durumda iki model dosyası da indirilebilir. Grafik hızlandırması başarısızsa ayarlardan uyumlu mod seçilebilir. Model yüklenmeden önce gönderilen mesaj, hazırlık tamamlanınca gönderilir.
+“Bağlan ve konuş” düğmesi Puter bağlantısını açar. Açılışta, mesaj gönderirken veya sesli sohbet düğmesine dokunurken model dosyası indirilmez. Puter hesabına giriş gerekir; kullanım bu hesabın kotasından düşer, ek kullanım ücretli olabilir. Bağlantı öncesi yazılmış taslak korunur ve kullanıcı tekrar gönderene kadar sağlayıcıya iletilmez.
+
+“Cihaz modunu dene” seçeneği açıkça seçilirse model indirmesi başlar. İndirme cihaza göre 650 MB–1,5 GB'tır; her telefonda açılamayabilir. Cihaz modelinin yüklenmesi başarısız olursa tekrar indirme başlatılmaz; model indirmeden bağlanma seçeneğine dönülür. Grafik hızlandırması başarısızsa ayarlardan uyumlu mod seçilebilir. Küçük cihaz modellerinin Türkçe kalitesi sınırlıdır.
 
 - Türkçe sohbet; yanıtların metin olarak akması.
 - Cihazın Türkçe sesiyle yanıtları dinleme, ses seçimi ve hız ayarı.

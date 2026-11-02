@@ -21,7 +21,7 @@ let voiceMode = false;
 let voiceSending = false;
 let handsFreeTimer;
 let noticeTimer;
-let engineKind = 'local';
+let engineKind = 'cloud';
 let cloudAbort;
 let sdkPromise;
 
@@ -118,14 +118,15 @@ const voice = new Voice({
 
 function resetEngine() {
   clearTimeout(loadTimer); worker?.terminate(); worker = null; ready = false; loading = false; pendingPrompt = '';
-  cloudAbort?.abort(); cloudAbort = null; engineKind = 'local';
-  $('setup').hidden = false; $('start-engine').hidden = false; $('start-engine').textContent = 'Aslı’yı başlat';
-  $('setup-title').textContent = 'Aslı’yı bir kez hazırla'; $('setup-description').textContent = 'İlk kullanımda cihaza göre 650 MB–1,5 GB indirilir. API anahtarı gerekmez.';
+  cloudAbort?.abort(); cloudAbort = null; engineKind = 'cloud';
+  $('setup').hidden = false; $('start-engine').hidden = false; $('start-engine').textContent = 'Bağlan ve konuş';
+  $('setup-title').textContent = 'Model indirmeden sohbet et'; $('setup-description').textContent = 'Puter hesabınla bağlan. Kullanım hesabının kotasından düşer.';
   $('download-track').hidden = true; $('dictate').disabled = false;
-  status('Başlamaya hazır'); document.querySelector('.small-note span').textContent = 'Model cihazında çalışır';
+  status('Bağlanmaya hazır'); document.querySelector('.small-note span').textContent = 'Model indirmeden sohbet';
 }
 function loadEngine() {
   if (ready || loading) return;
+  engineKind = 'local';
   loading = true; notice('');
   $('setup').hidden = false; $('start-engine').hidden = true; $('download-track').hidden = false;
   $('setup-title').textContent = 'Aslı hazırlanıyor'; $('setup-description').textContent = 'İlk indirme birkaç dakika sürebilir. Bu sekmeyi açık tut.';
@@ -133,7 +134,8 @@ function loadEngine() {
   status('Aslı hazırlanıyor', 'loading');
   try { worker = new Worker(new URL('./engine.js', import.meta.url), { type: 'module' }); }
   catch { resetEngine(); notice('Sohbet motoru başlatılamadı. Güncel bir tarayıcıyla tekrar dene.'); return; }
-  worker.onmessage = handleEngine;
+  const activeWorker = worker;
+  worker.onmessage = event => { if (worker === activeWorker) handleEngine(event); };
   worker.onerror = () => { const hadRequest = busy; resetEngine(); if (hadRequest) failResponse(); notice('Sohbet motoru yüklenemedi. İnternet bağlantını kontrol et ve yeniden başlat.'); };
   worker.postMessage({ type: 'load', mode: settings.engineMode });
   loadTimer = setTimeout(() => { resetEngine(); notice('Modelin yüklenmesi beklenenden uzun sürdü. Bağlantını kontrol edip yeniden deneyebilirsin; indirilen dosyalar önbellekte kalmış olabilir.'); }, 300000);
@@ -169,7 +171,7 @@ async function handleEngine({ data }) {
   }
   if (data.type === 'error') {
     console.warn('Aslı engine:', data.stage, data.message);
-    if (data.stage === 'load') { resetEngine(); notice('Model indirilemedi veya cihazda açılamadı. Bağlantını kontrol et. Ayarlardan uyumlu modu seçerek yeniden deneyebilirsin.'); }
+    if (data.stage === 'load') { resetEngine(); notice('Bu cihaz modeli açamadı. İndirmeden devam etmek için Bağlan ve konuş düğmesine dokun.'); }
     else if (data.requestId === requestId && busy) {
       if (data.partial) completeResponse(data.partial); else failResponse();
       notice('Yanıt tamamlanamadı. Daha kısa bir mesajla yeniden deneyebilirsin.');
@@ -194,12 +196,10 @@ function failResponse() {
 function sendMessage(text = $('message').value) {
   text = String(text).trim().slice(0, 2000);
   if (!text || busy) return;
-  if (engineKind === 'cloud' && !window.puter?.auth.isSignedIn()) { resetEngine(); notice('Puter oturumun kapanmış. Gelişmiş sohbet düğmesinden yeniden bağlanabilirsin.'); return; }
+  if (ready && engineKind === 'cloud' && !window.puter?.auth.isSignedIn()) { resetEngine(); openCloudDialog(); return; }
   if (!ready) {
-    pendingPrompt = text;
-    if (!loading) loadEngine();
-    notice('Aslı hazırlanıyor. Hazır olduğunda mesajın gönderilecek.');
-    if (voiceMode) { $('voice-state').textContent = 'Önce modeli hazırlıyorum. İndirme ilerlemesini sohbet ekranında görebilirsin.'; }
+    if (loading) { pendingPrompt = text; notice('Cihaz modeli hazırlanıyor. İstersen hazırlığı iptal edip indirmeden bağlanabilirsin.'); }
+    else openCloudDialog();
     return;
   }
   clearTimeout(handsFreeTimer); voice.stopListening(true); voice.cancelSpeech(); notice('');
@@ -244,7 +244,7 @@ function closeVoice() {
 $('composer').addEventListener('submit', event => { event.preventDefault(); sendMessage(); });
 $('message').addEventListener('input', resizeInput);
 $('message').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && matchMedia('(min-width: 761px)').matches) { event.preventDefault(); sendMessage(); } });
-$('start-engine').addEventListener('click', loadEngine);
+$('start-engine').addEventListener('click', openCloudDialog);
 $('cancel-load').addEventListener('click', () => { resetEngine(); notice('Hazırlık durduruldu. Yeniden başlatarak devam edebilirsin.'); });
 $('stop').addEventListener('click', stopGeneration);
 $('dictate').addEventListener('click', () => voice.listening ? voice.stopListening() : voice.listen());
@@ -287,6 +287,7 @@ $('export-chat').addEventListener('click', () => {
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'asli-sohbet.txt'; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 $('voice-mode').addEventListener('click', () => {
+  if (!ready) { openCloudDialog(); return; }
   voiceMode = true; voiceSending = false; notice(''); $('voice-dialog').showModal();
   $('voice-state').textContent = ready ? 'Mikrofona dokun ve konuşmaya başla.' : 'Önce Aslı’yı sohbet ekranından başlat. İlk hazırlık birkaç dakika sürebilir.';
   $('voice-listen').disabled = !ready || busy;
@@ -315,12 +316,14 @@ function loadCloudSdk() {
   });
   return sdkPromise;
 }
-$('cloud-open').addEventListener('click', async () => {
+async function openCloudDialog() {
   if (busy || loading) return notice('Önce devam eden yanıtı veya model hazırlığını durdur.');
-  $('cloud-dialog').showModal(); $('cloud-connect').disabled = true; $('cloud-state').textContent = 'Bağlantı hazırlanıyor…';
+  if ($('voice-dialog').open) closeVoice();
+  if (!$('cloud-dialog').open) $('cloud-dialog').showModal(); $('cloud-connect').disabled = true; $('cloud-state').textContent = 'Bağlantı hazırlanıyor…';
   try { await loadCloudSdk(); $('cloud-connect').disabled = false; $('cloud-state').textContent = 'Puter giriş penceresi düğmeye dokunduğunda açılır.'; }
   catch { $('cloud-state').textContent = 'Puter bağlantısı yüklenemedi. İnternetini kontrol edip pencereyi yeniden açabilir veya cihaz modunu kullanabilirsin.'; }
-});
+}
+$('cloud-open').addEventListener('click', openCloudDialog);
 $('cloud-connect').addEventListener('click', async () => {
   const puter = window.puter;
   if (!puter) return;
@@ -328,13 +331,14 @@ $('cloud-connect').addEventListener('click', async () => {
   try {
     if (!puter.auth.isSignedIn()) await puter.auth.signIn({ attempt_temp_user_creation: false });
     if (!puter.auth.isSignedIn()) throw new Error('not_signed_in');
+    const draft = $('message').value;
     resetEngine(); engineKind = 'cloud'; ready = true; saveSession(); current = newSession();
-    $('message').value = ''; $('setup').hidden = true; renderConversation(); renderHistory();
+    $('message').value = draft; resizeInput(); $('setup').hidden = true; renderConversation(); renderHistory();
     status(readyLabel(), 'ready'); document.querySelector('.small-note span').textContent = 'Puter üzerinden bağlı'; $('cloud-dialog').close(); notice('Gelişmiş sohbet açık. Gönderdiğin mesajlar Puter üzerinden işlenir ve hesabının kotasından düşer.'); $('message').focus();
   } catch { $('cloud-state').textContent = 'Bağlantı tamamlanmadı. Açılır pencereye izin verip yeniden deneyebilir veya cihaz modunu kullanabilirsin.'; }
   finally { $('cloud-connect').disabled = false; }
 });
-$('cloud-local').addEventListener('click', () => { if (busy) return; resetEngine(); $('cloud-dialog').close(); notice('Cihaz modu açık. Aslı’yı başlat düğmesiyle modeli hazırlayabilirsin.'); });
+$('cloud-local').addEventListener('click', () => { if (busy) return; resetEngine(); $('cloud-dialog').close(); loadEngine(); });
 if (!settings.saveHistory) { try { localStorage.removeItem(HISTORY_KEY); } catch {} }
 if (!voice.canListen) $('dictate').title = 'Mikrofonla yazdırma bu tarayıcıda desteklenmiyor';
 renderConversation(); renderHistory(); resizeInput();
