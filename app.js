@@ -1,6 +1,8 @@
 import { cleanSettings, cleanSessions, modelMessages, SETTINGS_KEY, HISTORY_KEY } from './core.mjs';
 import { Voice } from './voice.js';
 import { generateCloud } from './cloud.mjs';
+import { SpeechStream } from './voice-stream.mjs';
+import { setupAvatar } from './avatar.mjs';
 
 const $ = id => document.getElementById(id);
 const icon = name => { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const use = document.createElementNS(svg.namespaceURI, 'use'); use.setAttribute('href', `#i-${name}`); svg.append(use); svg.setAttribute('aria-hidden', 'true'); return svg; };
@@ -24,6 +26,10 @@ let noticeTimer;
 let engineKind = 'cloud';
 let cloudAbort;
 let sdkPromise;
+let speechStream;
+let voicePaused = false;
+let voiceProblem = '';
+let resumeVoiceAfterConnect = false;
 
 function newSession() { return { id: crypto.randomUUID?.() || `chat-${Date.now()}-${Math.random().toString(36).slice(2)}`, title: 'Yeni sohbet', messages: [] }; }
 function notice(text, duration = 0) { clearTimeout(noticeTimer); $('notice').textContent = text; $('notice').hidden = !text; if (text && duration) noticeTimer = setTimeout(() => notice(''), duration); if (voiceMode && text) $('voice-state').textContent = text; }
@@ -84,8 +90,9 @@ function setBusy(value) {
   $('stop').hidden = !value;
   $('message').disabled = value;
   $('dictate').disabled = value || loading;
-  if (value) { status('Aslı düşünüyor', 'loading'); $('voice-orb').className = 'voice-orb thinking'; $('voice-state').textContent = 'Düşünüyorum…'; }
+  if (value) status('Aslı düşünüyor', 'loading');
   else if (ready) status(readyLabel(), 'ready');
+  refreshVoiceUI();
 }
 
 const voice = new Voice({
@@ -93,20 +100,15 @@ const voice = new Voice({
   onState(state) {
     $('dictate').classList.toggle('listening', state === 'listening');
     $('dictate').setAttribute('aria-label', state === 'listening' ? 'Mikrofonu durdur' : 'Mikrofonla yazdır');
-    $('voice-orb').className = `voice-orb ${state}`;
-    $('voice-listen').disabled = busy || !ready || !voice.canListen;
-    $('voice-listen').replaceChildren(icon(state === 'listening' ? 'stop' : 'mic'), document.createTextNode(state === 'listening' ? 'Konuşmayı bitir' : 'Konuşmaya başla'));
-    if (voiceMode) {
-      $('voice-heading').textContent = state === 'listening' ? 'Seni dinliyorum.' : state === 'speaking' ? 'Aslı konuşuyor.' : 'Biraz konuşalım mı?';
-      $('voice-state').textContent = state === 'listening' ? 'Konuşman bitince yanıt vereceğim.' : state === 'speaking' ? 'İstersen sesi durdurabilirsin.' : 'Mikrofona dokun ve konuşmaya başla.';
-    }
+    refreshVoiceUI();
   },
   onTranscript(text, final) {
     $('message').value = text; resizeInput();
     if (voiceMode) $('voice-transcript').textContent = text;
     if (final && voiceMode && !voiceSending) { voiceSending = true; sendMessage(text); }
   },
-  onError: text => { clearTimeout(handsFreeTimer); voiceSending = false; notice(text); if ($('settings-dialog').open) $('voice-info').textContent = text; },
+  onError: text => { clearTimeout(handsFreeTimer); voiceSending = false; voicePaused = true; voiceProblem = text; notice(text); refreshVoiceUI(); if ($('settings-dialog').open) $('voice-info').textContent = text; },
+  onEnd(reason) { if (reason === 'silence' || reason === 'empty') scheduleListening(800); },
   onVoices(voices) {
     const select = $('voice-select'); select.replaceChildren(new Option('Cihazın Türkçe sesi', ''));
     const turkish = voices.filter(v => /^tr/i.test(v.lang));
@@ -115,6 +117,63 @@ const voice = new Voice({
     $('voice-info').textContent = turkish.length ? `${turkish.length} Türkçe ses bulundu.` : voices.length ? 'Türkçe ses bulunamadı. Cihazının metin okuma ayarlarından Türkçe ses yükle.' : 'Ses listesi cihazından yüklenir. Ses yoksa cihazının metin okuma ayarlarını kontrol et.';
   },
 });
+
+function refreshVoiceUI() {
+  const phase = !ready ? 'connect' : voicePaused ? 'paused' : voice.listening ? 'listening' : voice.speaking ? 'speaking' : busy ? 'thinking' : 'idle';
+  const labels = {
+    connect: ['Aslı’yla konuş.', 'Önce hesabınla bağlan; ardından mikrofon izniyle konuşmaya başlayabilirsin.'],
+    listening: ['Seni dinliyorum.', 'Konuşman bitince yanıt vereceğim.'],
+    speaking: ['Aslı konuşuyor.', 'Araya girmek için baloncuğa dokun.'],
+    thinking: ['Biraz düşünüyorum.', 'Yanıtım hazır oldukça seslendireceğim.'],
+    paused: ['Sohbet duraklatıldı.', voiceProblem || 'Devam etmek için mikrofona dokun.'],
+    idle: ['Buradayım.', 'Mikrofona dokun ve konuşmaya başla.'],
+  };
+  $('voice-orb').className = `voice-orb ${phase}`;
+  $('voice-launcher').dataset.state = phase;
+  $('voice-heading').textContent = labels[phase][0];
+  $('voice-state').textContent = labels[phase][1];
+  let label = !ready ? 'Bağlan ve konuş' : !voice.canListen ? 'Yazılı sohbete dön' : phase === 'listening' ? 'Mikrofonu kapat' : ['speaking', 'thinking'].includes(phase) ? 'Sözünü kes ve konuş' : 'Konuşmaya başla';
+  $('voice-listen').disabled = loading;
+  $('voice-listen').replaceChildren(icon(phase === 'listening' ? 'stop' : 'mic'), document.createTextNode(label));
+  $('voice-orb').setAttribute('aria-label', label);
+  $('voice-orb').setAttribute('aria-pressed', String(phase === 'listening'));
+  $('voice-orb').disabled = loading;
+  if (ready && !voice.canListen) $('voice-state').textContent = 'Bu tarayıcı konuşma tanımayı desteklemiyor. Chrome ile açabilir veya yazılı sohbeti kullanabilirsin.';
+}
+
+function scheduleListening(delay = 320) {
+  clearTimeout(handsFreeTimer);
+  if (!voiceMode || voicePaused || !$('hands-free').checked || document.hidden || !ready || busy || voice.speaking || !voice.canListen) return;
+  handsFreeTimer = setTimeout(() => {
+    if (voiceMode && !voicePaused && $('hands-free').checked && !document.hidden && ready && !busy && !voice.speaking && !voice.recognition) startListening();
+  }, delay);
+}
+
+function startListening() {
+  if (!voiceMode || !ready || document.hidden || !voice.canListen) return;
+  clearTimeout(handsFreeTimer); voicePaused = false; voiceProblem = ''; voiceSending = false;
+  notice(''); $('voice-transcript').textContent = '';
+  voice.listen({ quietSilence: $('hands-free').checked });
+}
+
+function openVoice(autoStart = true) {
+  voiceMode = true; voiceSending = false; voicePaused = false; voiceProblem = '';
+  notice(''); if (!$('voice-dialog').open) $('voice-dialog').showModal();
+  refreshVoiceUI();
+  if (autoStart && ready && !busy && !voice.speaking) startListening();
+}
+
+function voiceAction() {
+  if (!ready) { closeVoice(); resumeVoiceAfterConnect = true; openCloudDialog(); return; }
+  if (!voice.canListen) { closeVoice(); $('message').focus(); return; }
+  if (voice.listening) {
+    voicePaused = true; clearTimeout(handsFreeTimer); voice.stopListening(true); refreshVoiceUI();
+    return;
+  }
+  speechStream?.cancel(); voice.cancelSpeech();
+  if (busy) stopGeneration();
+  if (ready) startListening(); else refreshVoiceUI();
+}
 
 function resetEngine() {
   clearTimeout(loadTimer); worker?.terminate(); worker = null; ready = false; loading = false; pendingPrompt = '';
@@ -158,15 +217,16 @@ async function handleEngine({ data }) {
   if (data.type === 'token' && data.requestId === requestId && busy) {
     outputText = data.text; assistantNode.body.classList.remove('thinking'); assistantNode.body.textContent = outputText; scrollBottom();
     if (voiceMode) $('voice-transcript').textContent = outputText;
+    if (!document.hidden) speechStream?.update(outputText);
   }
   if (data.type === 'done' && data.requestId === requestId && busy) {
     const text = data.text || outputText;
     if (!text.trim()) { failResponse(); notice('Yanıt üretilemedi. Mesajını yeniden gönderebilirsin.'); return; }
     completeResponse(text);
-    if (settings.autoSpeak || voiceMode) {
+    if ((settings.autoSpeak || voiceMode) && (!voiceMode || !voicePaused) && !document.hidden) {
       const thisRequest = requestId;
-      const spoken = await voice.speak(text);
-      if (spoken && voiceMode && thisRequest === requestId && $('hands-free').checked) handsFreeTimer = setTimeout(() => { if (voiceMode && !busy && ready) voice.listen(); }, 550);
+      const spoken = speechStream ? await speechStream.finish(text) : await voice.speak(text);
+      if (spoken && thisRequest === requestId) scheduleListening();
     }
   }
   if (data.type === 'error') {
@@ -183,8 +243,8 @@ function completeResponse(text) {
   addMessageTools(assistantNode.article, text);
   current.messages.push({ role: 'assistant', content: text });
   setBusy(false); voiceSending = false; saveSession(); announce('Aslı yanıtladı.');
-  $('voice-listen').disabled = false; $('voice-orb').className = 'voice-orb';
-  if (voiceMode) { $('voice-transcript').textContent = text; $('voice-state').textContent = 'Yanıtım hazır.'; }
+  if (voiceMode) $('voice-transcript').textContent = text;
+  refreshVoiceUI();
   scrollBottom(); if (!voiceMode) $('message').focus();
 }
 function failResponse() {
@@ -202,7 +262,8 @@ function sendMessage(text = $('message').value) {
     else openCloudDialog();
     return;
   }
-  clearTimeout(handsFreeTimer); voice.stopListening(true); voice.cancelSpeech(); notice('');
+  clearTimeout(handsFreeTimer); voice.stopListening(true); speechStream?.cancel(); voice.cancelSpeech(); notice('');
+  speechStream = (settings.autoSpeak || voiceMode) && !document.hidden ? new SpeechStream(voice) : null;
   requestId++; outputText = ''; $('welcome').hidden = true;
   current.messages.push({ role: 'user', content: text }); messageElement('user', text);
   assistantNode = messageElement('assistant', 'Biraz düşünüyorum…', false); assistantNode.body.classList.add('thinking');
@@ -215,6 +276,7 @@ function sendMessage(text = $('message').value) {
       .then(text => handleEngine({ data: { type: 'done', requestId: id, text } }))
       .catch(error => {
         if (id !== requestId || !busy) return;
+        speechStream?.cancel(); voicePaused = true;
         if (error.partial) completeResponse(error.partial); else failResponse();
         notice('Gelişmiş sohbet tamamlanamadı. İnternetini, Puter oturumunu ve kullanım kotanı kontrol et. Mesajın otomatik olarak tekrar gönderilmedi.');
       })
@@ -223,6 +285,7 @@ function sendMessage(text = $('message').value) {
 }
 function stopGeneration() {
   if (!busy) return;
+  speechStream?.cancel();
   if (engineKind === 'cloud') {
     cloudAbort?.abort();
     if (outputText.trim()) completeResponse(outputText.trim()); else failResponse();
@@ -237,7 +300,7 @@ function stopGeneration() {
 }
 function resizeInput() { $('message').style.height = 'auto'; $('message').style.height = Math.min($('message').scrollHeight, 150) + 'px'; }
 function closeVoice() {
-  voiceMode = false; voiceSending = false; clearTimeout(handsFreeTimer); voice.stopListening(true); voice.cancelSpeech();
+  voiceMode = false; voicePaused = true; voiceSending = false; clearTimeout(handsFreeTimer); voice.stopListening(true); speechStream?.cancel(); voice.cancelSpeech();
   if ($('voice-dialog').open) $('voice-dialog').close();
 }
 
@@ -262,7 +325,7 @@ $('save-history').checked = settings.saveHistory;
 $('speech-rate').value = settings.rate;
 $('rate-label').value = `${settings.rate}×`;
 $('engine-mode').value = settings.engineMode;
-$('auto-speak').addEventListener('change', event => { settings.autoSpeak = event.target.checked; persistSettings(); if (!settings.autoSpeak) voice.cancelSpeech(); });
+$('auto-speak').addEventListener('change', event => { settings.autoSpeak = event.target.checked; persistSettings(); if (!settings.autoSpeak) { speechStream?.cancel(); voice.cancelSpeech(); } });
 $('voice-select').addEventListener('change', event => { settings.voice = event.target.value; persistSettings(); });
 $('speech-rate').addEventListener('input', event => { settings.rate = Number(event.target.value); $('rate-label').value = `${settings.rate}×`; persistSettings(); });
 $('engine-mode').addEventListener('change', event => { settings.engineMode = event.target.value; persistSettings(); });
@@ -286,20 +349,15 @@ $('export-chat').addEventListener('click', () => {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'asli-sohbet.txt'; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
-$('voice-mode').addEventListener('click', () => {
-  if (!ready) { openCloudDialog(); return; }
-  voiceMode = true; voiceSending = false; notice(''); $('voice-dialog').showModal();
-  $('voice-state').textContent = ready ? 'Mikrofona dokun ve konuşmaya başla.' : 'Önce Aslı’yı sohbet ekranından başlat. İlk hazırlık birkaç dakika sürebilir.';
-  $('voice-listen').disabled = !ready || busy;
-  if (!voice.canListen) { $('voice-state').textContent = 'Bu tarayıcı mikrofonla konuşmayı desteklemiyor. Yazılı sohbeti kullanabilirsin; yanıtları seslendirebilirim.'; $('voice-listen').disabled = true; }
-  if (!ready) $('voice-heading').textContent = 'Önce tanışmaya hazırlanalım.';
-});
+$('voice-mode').addEventListener('click', () => openVoice());
+$('voice-launcher').addEventListener('click', () => openVoice());
 $('close-voice').addEventListener('click', closeVoice);
 $('voice-dialog').addEventListener('cancel', event => { event.preventDefault(); closeVoice(); });
-$('voice-listen').addEventListener('click', () => { clearTimeout(handsFreeTimer); voiceSending = false; if (voice.listening) voice.stopListening(); else { $('voice-transcript').textContent = ''; voice.listen(); } });
-$('voice-stop').addEventListener('click', () => { clearTimeout(handsFreeTimer); voice.stopListening(true); voice.cancelSpeech(); if (busy) stopGeneration(); });
-$('hands-free').addEventListener('change', event => { if (!event.target.checked) clearTimeout(handsFreeTimer); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(handsFreeTimer); voice.stopListening(true); voice.cancelSpeech(); } });
+$('voice-listen').addEventListener('click', voiceAction);
+$('voice-orb').addEventListener('click', voiceAction);
+$('voice-stop').addEventListener('click', closeVoice);
+$('hands-free').addEventListener('change', event => { if (!event.target.checked) clearTimeout(handsFreeTimer); else scheduleListening(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { voicePaused = true; clearTimeout(handsFreeTimer); voice.stopListening(true); speechStream?.cancel(); voice.cancelSpeech(); refreshVoiceUI(); } });
 window.addEventListener('pagehide', () => { voice.stopListening(true); voice.cancelSpeech(); worker?.terminate(); });
 window.addEventListener('pagehide', () => cloudAbort?.abort());
 
@@ -334,7 +392,8 @@ $('cloud-connect').addEventListener('click', async () => {
     const draft = $('message').value;
     resetEngine(); engineKind = 'cloud'; ready = true; saveSession(); current = newSession();
     $('message').value = draft; resizeInput(); $('setup').hidden = true; renderConversation(); renderHistory();
-    status(readyLabel(), 'ready'); document.querySelector('.small-note span').textContent = 'Puter üzerinden bağlı'; $('cloud-dialog').close(); notice('Gelişmiş sohbet açık. Gönderdiğin mesajlar Puter üzerinden işlenir ve hesabının kotasından düşer.'); $('message').focus();
+    status(readyLabel(), 'ready'); document.querySelector('.small-note span').textContent = 'Puter üzerinden bağlı'; $('cloud-dialog').close(); notice('Gelişmiş sohbet açık. Gönderdiğin mesajlar Puter üzerinden işlenir ve hesabının kotasından düşer.');
+    if (resumeVoiceAfterConnect) { resumeVoiceAfterConnect = false; openVoice(false); } else $('message').focus();
   } catch { $('cloud-state').textContent = 'Bağlantı tamamlanmadı. Açılır pencereye izin verip yeniden deneyebilir veya cihaz modunu kullanabilirsin.'; }
   finally { $('cloud-connect').disabled = false; }
 });
@@ -342,3 +401,5 @@ $('cloud-local').addEventListener('click', () => { if (busy) return; resetEngine
 if (!settings.saveHistory) { try { localStorage.removeItem(HISTORY_KEY); } catch {} }
 if (!voice.canListen) $('dictate').title = 'Mikrofonla yazdırma bu tarayıcıda desteklenmiyor';
 renderConversation(); renderHistory(); resizeInput();
+setupAvatar({ input: $('avatar-file'), change: $('change-avatar'), reset: $('reset-avatar'), images: document.querySelectorAll('[data-avatar]'), notify: text => { $('voice-state').textContent = text; announce(text); } });
+if (window.ResizeObserver) new ResizeObserver(entries => { document.documentElement.style.setProperty('--composer-height', `${Math.ceil(entries[0].target.getBoundingClientRect().height)}px`); }).observe(document.querySelector('.compose-area'));

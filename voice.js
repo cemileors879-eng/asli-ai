@@ -1,11 +1,12 @@
 import { speechChunks } from './core.mjs';
 
 export class Voice {
-  constructor({ settings, onState, onTranscript, onError, onVoices }) {
+  constructor({ settings, onState, onTranscript, onError, onVoices, onEnd = () => {} }) {
     this.settings = settings;
     this.onState = onState;
     this.onTranscript = onTranscript;
     this.onError = onError;
+    this.onEnd = onEnd;
     this.synth = window.speechSynthesis;
     this.Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     this.recognition = null;
@@ -24,7 +25,7 @@ export class Voice {
   get canListen() { return !!this.Recognition; }
   get canSpeak() { return !!this.synth && !!window.SpeechSynthesisUtterance; }
 
-  listen() {
+  listen({ quietSilence = false } = {}) {
     if (!this.canListen) { this.onError('Bu tarayıcı mikrofonla yazdırmayı desteklemiyor. Chrome ile açabilir veya mesajını yazabilirsin.'); return; }
     this.cancelSpeech();
     this.stopListening(true);
@@ -34,6 +35,7 @@ export class Voice {
     let lastText = '';
     let aborted = false;
     let failed = false;
+    let silence = false;
     recognition.lang = 'tr-TR';
     recognition.continuous = false;
     recognition.interimResults = true;
@@ -52,15 +54,17 @@ export class Voice {
     recognition.onerror = event => {
       if (this.recognition !== recognition) return;
       failed = true;
+      silence = event.error === 'no-speech';
       const errors = { 'not-allowed': 'Mikrofon izni verilmedi. Tarayıcının site ayarlarından izin verip yeniden deneyebilirsin.', 'service-not-allowed': 'Tarayıcının konuşma tanıma hizmeti kullanılamıyor. Mesajını yazabilirsin.', 'audio-capture': 'Mikrofon bulunamadı. Cihazının mikrofonunu kontrol et.', 'network': 'Konuşma tanıma hizmetine ulaşılamadı. İnternet bağlantını kontrol et.', 'no-speech': 'Ses algılanmadı. Mikrofona dokunarak yeniden deneyebilirsin.' };
-      if (event.error !== 'aborted') this.onError(errors[event.error] || 'Ses tanınamadı. Tekrar konuşabilir veya mesajını yazabilirsin.');
+      if (event.error !== 'aborted' && !(silence && quietSilence)) this.onError(errors[event.error] || 'Ses tanınamadı. Tekrar konuşabilir veya mesajını yazabilirsin.');
     };
     recognition.onend = () => {
       if (this.recognition !== recognition) return;
       this.listening = false;
       this.recognition = null;
       this.onState('idle');
-      if (!aborted && !failed && (finalText || lastText).trim()) this.onTranscript((finalText || lastText).trim().slice(0, 2000), true);
+      if (!aborted && !failed && lastText.trim()) this.onTranscript(lastText.trim().slice(0, 2000), true);
+      if (!aborted) this.onEnd(silence ? 'silence' : failed ? 'error' : lastText.trim() ? 'transcript' : 'empty');
     };
     recognition._cancel = () => { aborted = true; };
     try { recognition.start(); }
