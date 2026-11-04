@@ -1,3 +1,5 @@
+import { ASLI_PERSONALITY } from './core.mjs';
+
 // Model inference is isolated from the interface in a dedicated worker.
 const MODELS = {
   wasm: { id: 'onnx-community/Qwen3-0.6B-ONNX', revision: '558750086ed49d78cb701ed6fa85af33fd16453f', dtype: 'q8' },
@@ -11,7 +13,7 @@ let loading = false;
 let generating = false;
 let mode = 'wasm';
 const send = data => self.postMessage(data);
-const SYSTEM = 'You are Aslı, a friendly AI assistant. Always answer in Turkish. Give a direct answer in one or two short sentences. Say you do not know when unsure. You have no internet or tools.';
+const SYSTEM = ASLI_PERSONALITY;
 
 async function initialize(requestedMode) {
   if (generator) { send({ type: 'ready', mode }); return; }
@@ -66,7 +68,7 @@ async function generate(messages, requestId) {
     const inputs = generator.tokenizer.apply_chat_template([
       { role: 'system', content: SYSTEM },
       { role: 'user', content: 'Sen kimsin?' },
-      { role: 'assistant', content: 'Ben Aslı, Türkçe konuşan bir yapay zekâ asistanıyım. Seninle sohbet edebilirim.' },
+      { role: 'assistant', content: 'Ben Aslı AI. Sohbet edebiliriz, aklında ne var?' },
       ...messages,
     ], {
       tokenize: true,
