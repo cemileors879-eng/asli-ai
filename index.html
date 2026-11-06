@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f6f5fb">
+  <meta name="theme-color" content="#fffcf4">
   <meta name="description" content="Aslı ile Türkçe yazış, mikrofonla konuş ve yanıtlarını dinle. Model indirmeden hesabınla bağlan.">
   <title>Aslı — Biraz konuşalım</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css?v=20261102-voice-3">
-</head>
+<link rel="stylesheet" href="./refresh.css"></head>
 <body>
   <a class="skip" href="#message">Sohbete geç</a>
   <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -51,9 +51,9 @@
       </header>
       <div class="content-scroll" id="content-scroll">
         <section class="welcome" id="welcome">
-          <div class="hello-stamp"><svg class="hello-mark"><use href="#asli-mark"/></svg><span>Buradayım.</span></div>
-          <h1>Merhaba, ben Aslı.<br>Biraz konuşalım mı?</h1>
-          <p class="intro">Aklından geçeni anlat. Birlikte düşünelim,<br class="desktop-break"> bir şeyler yazalım ya da sadece sohbet edelim.</p>
+          <div class="hello-stamp"><svg class="hello-mark"><use href="#asli-mark"/></svg><span>Küçük bir sohbet molası</span></div>
+          <div class="welcome-art" aria-hidden="true"><span>✿</span><i>✦</i></div><h1>Merhaba, ben <em>Aslı AI.</em><br>Biraz konuşalım mı?</h1>
+          <p class="intro">İster bir fikir, ister gününden bir parça.<br>Birlikte düşünelim,<br class="desktop-break"> bir şeyler yazalım ya da sadece sohbet edelim.</p>
           <div class="suggestions" aria-label="Sohbet önerileri">
             <button data-prompt="Merhaba Aslı, biraz sohbet edelim mi?"><svg><use href="#i-chat"/></svg><span>Biraz sohbet edelim</span><svg class="arrow"><use href="#i-arrow"/></svg></button>
             <button data-prompt="Bir fikrimi birlikte geliştirmek istiyorum. Bana nereden başlamam gerektiğini sor."><svg><use href="#i-spark"/></svg><span>Bir fikrim var</span><svg class="arrow"><use href="#i-arrow"/></svg></button>
@@ -92,7 +92,7 @@
   </dialog>
   <dialog id="about-dialog" class="settings-dialog" aria-labelledby="about-heading">
     <div class="dialog-head"><h2 id="about-heading">Aslı nasıl çalışır?</h2><button class="icon-button" data-close="about-dialog" aria-label="Bilgiyi kapat"><svg><use href="#i-close"/></svg></button></div>
-    <div class="about-copy"><p>Aslı'yı model indirmeden kullanmak için Puter hesabınla bağlan. Mesajların Puter ve model sağlayıcısına iletilir; kullanım hesabının kotasından düşer. Ücretsiz kota sınırlıdır ve ek kullanım ücretli olabilir.</p><p>İsteğe bağlı cihaz modu küçük bir dil modeli indirir. Bu mod her telefonda açılamayabilir; Türkçe kalitesi de sınırlıdır. Cihaz modunda sohbetin model çıkarımı sunucuya gönderilmez. Aslı internette arama yapmaz ve güncel haberleri doğrulayamaz.</p><p>Seslendirme cihazındaki konuşma sesini kullanır. Türkçe ses yoksa cihazının ses ayarlarından yükleyebilirsin. Mikrofonla yazdırma tarayıcının konuşma tanımasını kullanır; tarayıcına bağlı olarak sesin sağlayıcının sunucularında işlenebilir. Mikrofon yalnızca sen başlattığında açılır.</p><p>Yeni sohbet açınca önceki konuşma modelin bağlamından çıkarılır. “Sohbetleri bu cihazda sakla” kapalıyken sohbetler sayfa kapanınca kaybolur. Ayarlar ve indirilen model önbelleği ayrı tutulur.</p><a href="https://huggingface.co/onnx-community/Qwen3-1.7B-ONNX" target="_blank" rel="noopener noreferrer">İsteğe bağlı cihaz modelleri: Qwen3 0.6B / 1.7B</a></div>
+    <div class="about-copy"><p>Aslı AI bir yapay zekâ asistanıdır; fotoğraftaki gerçek Aslı değildir.</p><p>Aslı'yı model indirmeden kullanmak için Puter hesabınla bağlan. Mesajların Puter ve model sağlayıcısına iletilir; kullanım hesabının kotasından düşer. Ücretsiz kota sınırlıdır ve ek kullanım ücretli olabilir.</p><p>İsteğe bağlı cihaz modu küçük bir dil modeli indirir. Bu mod her telefonda açılamayabilir; Türkçe kalitesi de sınırlıdır. Cihaz modunda sohbetin model çıkarımı sunucuya gönderilmez. Aslı internette arama yapmaz ve güncel haberleri doğrulayamaz.</p><p>Seslendirme cihazındaki konuşma sesini kullanır. Türkçe ses yoksa cihazının ses ayarlarından yükleyebilirsin. Mikrofonla yazdırma tarayıcının konuşma tanımasını kullanır; tarayıcına bağlı olarak sesin sağlayıcının sunucularında işlenebilir. Mikrofon yalnızca sen başlattığında açılır.</p><p>Yeni sohbet açınca önceki konuşma modelin bağlamından çıkarılır. “Sohbetleri bu cihazda sakla” kapalıyken sohbetler sayfa kapanınca kaybolur. Ayarlar ve indirilen model önbelleği ayrı tutulur.</p><a href="https://huggingface.co/onnx-community/Qwen3-1.7B-ONNX" target="_blank" rel="noopener noreferrer">İsteğe bağlı cihaz modelleri: Qwen3 0.6B / 1.7B</a></div>
   </dialog>
   <dialog id="cloud-dialog" class="settings-dialog" aria-labelledby="cloud-heading">
     <div class="dialog-head"><h2 id="cloud-heading">Aslı'ya bağlan</h2><button class="icon-button" data-close="cloud-dialog" aria-label="Bağlantı penceresini kapat"><svg><use href="#i-close"/></svg></button></div>
