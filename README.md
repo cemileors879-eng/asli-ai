@@ -49,3 +49,11 @@ Bağımlılıklar sürümlere sabitlenmiştir: Transformers.js 3.8.1 ve Qwen3 ON
 “Gelişmiş sohbet” düğmesiyle Puter hesabına bağlanarak GPT-5.4 Nano kullanılabilir. Bu seçenek model indirmesi gerektirmez; mesajlar Puter ve model sağlayıcısına iletilir. Puter oturumu kullanıcı tıklamasıyla açılır; bağlantı kurulunca önceki sohbetin aktarılmaması için yeni sohbet başlatılır. Kullanım kullanıcının Puter hesabına aittir; ücretsiz kota sınırlıdır ve ek kullanım ücretli olabilir. Durdurmak sağlayıcıya ulaşmış isteğin ücretlendirmesini tamamen iptal etmeyebilir. Sağlayıcı hesap bağlantısı gerektirdiğinden canlı bulut yanıtı bu oturumda doğrulanmadı. Kota bilgisi: https://docs.puter.com/user-pays-model/
 
 Gelişmiş sohbet, Aslı’nın sistem talimatını ve mevcut konuşma bağlamını hazırlamak ve Puter’ın akışlı yanıtını işlemek için LangChain.js Core kullanır. Bağlantı penceresi açıldığında sabitlenmiş sürüm tarayıcıya yüklenir. Kütüphane yüklenemezse mevcut Puter akışı kullanılır. Cihaz modu bu kütüphaneye ihtiyaç duymaz.
+
+## Hesapsız sohbeti yayınlama
+
+1. Cloudflare Workers Free hesabında Workers AI kullanıma hazırken depo kökünde `npx wrangler deploy` çalıştır. Wrangler girişini kendi hesabınla tamamla. Worker bağlaması API anahtarını tarayıcıya göndermez.
+2. Dağıtımın döndürdüğü Worker adresine `/chat` ekle ve bu HTTPS adresini `index.html` içindeki `asli-chat-endpoint` meta etiketinin `content` değerine yaz.
+3. Önce Worker yanıtını gerçek bir Türkçe deneme mesajıyla doğrula, sonra GitHub Pages'i yayınla. Yazılı ve sesli sohbeti siteden kontrol et.
+
+Worker bir IP adresinden dakikada 8, tüm site için UTC günü başına toplam 100 model isteği kabul eder. Reddedilen istekler modele iletilmez. Model çağrısı sunucu tarafında yapılır. Tarayıcı mevcut konuşma tanıma ve seslendirme akışını kullanır. Adres boşken site mevcut bağlantı seçeneklerini sunar.

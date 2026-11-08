@@ -5,6 +5,7 @@ import { SpeechStream } from './voice-stream.mjs';
 import { setupAvatar } from './avatar.mjs';
 
 const $ = id => document.getElementById(id);
+const hostedEndpoint = document.querySelector('meta[name="asli-chat-endpoint"]').content;
 const icon = name => { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const use = document.createElementNS(svg.namespaceURI, 'use'); use.setAttribute('href', `#i-${name}`); svg.append(use); svg.setAttribute('aria-hidden', 'true'); return svg; };
 const readStored = key => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } };
 const settings = cleanSettings(readStored(SETTINGS_KEY));
@@ -37,6 +38,7 @@ function notice(text, duration = 0) { clearTimeout(noticeTimer); $('notice').tex
 function announce(text) { $('announcer').textContent = text; }
 function status(text, kind = '') { $('engine-status').textContent = text; $('status-dot').className = `status-dot ${kind}`; }
 function readyLabel() { return engineKind === 'cloud' ? 'Gelişmiş sohbet hazır' : 'Sohbete hazır'; }
+function usingRemoteEngine() { return engineKind !== 'local'; }
 function persistSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { notice('Tarayıcı ayarları saklamaya izin vermiyor. Bu oturumda kullanmaya devam edebilirsin.'); } }
 function saveSession() {
   if (!current.messages.length) return;
@@ -165,6 +167,7 @@ function openVoice(autoStart = true) {
 }
 
 function voiceAction() {
+  if (!ready && hostedEndpoint && !loading) startHostedChat();
   if (!ready) { closeVoice(); resumeVoiceAfterConnect = true; openCloudDialog(); return; }
   if (!voice.canListen) { closeVoice(); $('message').focus(); return; }
   if (voice.listening) {
@@ -180,10 +183,30 @@ function resetEngine() {
   clearTimeout(loadTimer); worker?.terminate(); worker = null; ready = false; loading = false; pendingPrompt = '';
   cloudAbort?.abort(); cloudAbort = null; engineKind = 'cloud';
   $('setup').hidden = false; $('start-engine').hidden = false; $('start-engine').textContent = 'Bağlan ve konuş';
-  $('setup-title').textContent = 'Model indirmeden sohbet et'; $('setup-description').textContent = 'Puter hesabınla bağlan. Kullanım hesabının kotasından düşer.';
+  $('setup-title').textContent = 'Model indirmeden sohbet et'; $('setup-description').textContent = hostedEndpoint ? 'Hesap açmadan sohbet et. Mesajların Aslı AI sunucusu üzerinden işlenir.' : 'Puter hesabınla bağlan. Kullanım hesabının kotasından düşer.';
   $('download-track').hidden = true; $('dictate').disabled = false;
   status('Bağlanmaya hazır'); document.querySelector('.small-note span').textContent = 'Model indirmeden sohbet';
 }
+function startHostedChat() {
+  const draft = $('message').value;
+  resetEngine(); engineKind = 'hosted'; ready = true; saveSession(); current = newSession();
+  $('message').value = draft; resizeInput(); $('setup').hidden = true; renderConversation(); renderHistory();
+  status(readyLabel(), 'ready'); document.querySelector('.small-note span').textContent = 'Hesapsız sohbet';
+  refreshVoiceUI();
+}
+
+async function generateHosted(messages, signal) {
+  const response = await fetch(hostedEndpoint, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
+    body: JSON.stringify({ messages }),
+  });
+  const data = await response.json();
+  if (!response.ok || typeof data.text !== 'string' || !data.text.trim()) {
+    throw new Error(data.error || 'unavailable');
+  }
+  return data.text.trim();
+}
+
 function loadEngine() {
   if (ready || loading) return;
   engineKind = 'local';
@@ -258,6 +281,7 @@ function sendMessage(text = $('message').value) {
   text = String(text).trim().slice(0, 2000);
   if (!text || busy) return;
   if (ready && engineKind === 'cloud' && !window.puter?.auth.isSignedIn()) { resetEngine(); openCloudDialog(); return; }
+  if (!ready && hostedEndpoint && !loading) startHostedChat();
   if (!ready) {
     if (loading) { pendingPrompt = text; notice('Cihaz modeli hazırlanıyor. İstersen hazırlığı iptal edip indirmeden bağlanabilirsin.'); }
     else openCloudDialog();
@@ -269,17 +293,24 @@ function sendMessage(text = $('message').value) {
   current.messages.push({ role: 'user', content: text }); messageElement('user', text);
   assistantNode = messageElement('assistant', 'Biraz düşünüyorum…', false); assistantNode.body.classList.add('thinking');
   $('message').value = ''; resizeInput(); setBusy(true); scrollBottom(); saveSession();
-  if (engineKind === 'cloud') {
+  if (usingRemoteEngine()) {
     const id = requestId; cloudAbort = new AbortController();
     const controller = cloudAbort;
     const timer = setTimeout(() => controller.abort(), 90000);
-    generateCloud(window.puter, modelMessages(current.messages), controller.signal, text => handleEngine({ data: { type: 'token', requestId: id, text } }), cloudChain)
-      .then(text => handleEngine({ data: { type: 'done', requestId: id, text } }))
+    const messages = modelMessages(current.messages);
+    const hosted = engineKind === 'hosted';
+    const result = hosted
+      ? generateHosted(messages, controller.signal)
+      : generateCloud(window.puter, messages, controller.signal, text => handleEngine({ data: { type: 'token', requestId: id, text } }), cloudChain);
+    result.then(text => handleEngine({ data: { type: 'done', requestId: id, text } }))
       .catch(error => {
         if (id !== requestId || !busy) return;
         speechStream?.cancel(); voicePaused = true;
         if (error.partial) completeResponse(error.partial); else failResponse();
-        notice('Gelişmiş sohbet tamamlanamadı. İnternetini, Puter oturumunu ve kullanım kotanı kontrol et. Mesajın otomatik olarak tekrar gönderilmedi.');
+        if (!hosted) notice('Gelişmiş sohbet tamamlanamadı. İnternetini, Puter oturumunu ve kullanım kotanı kontrol et. Mesajın otomatik olarak tekrar gönderilmedi.');
+        else if (error.message === 'daily_limit') notice('Aslı’nın günlük sohbet sınırı doldu. Türkiye saatiyle 03.00’ten sonra tekrar deneyebilirsin.');
+        else if (error.message === 'rate_limit') notice('Kısa sürede çok fazla mesaj gönderildi. Bir dakika sonra tekrar deneyebilirsin.');
+        else notice('Aslı şu anda yanıt veremedi. Bağlantını kontrol edip yeniden dene.');
       })
       .finally(() => { clearTimeout(timer); if (cloudAbort === controller) cloudAbort = null; });
   } else worker.postMessage({ type: 'generate', messages: modelMessages(current.messages), requestId });
@@ -287,10 +318,10 @@ function sendMessage(text = $('message').value) {
 function stopGeneration() {
   if (!busy) return;
   speechStream?.cancel();
-  if (engineKind === 'cloud') {
+  if (usingRemoteEngine()) {
     cloudAbort?.abort();
     if (outputText.trim()) completeResponse(outputText.trim()); else failResponse();
-    requestId++; notice('Yanıt durduruldu. Sağlayıcı tamamlanan kullanımı kotana yansıtabilir.');
+    requestId++; notice(engineKind === 'hosted' ? 'Yanıt durduruldu.' : 'Yanıt durduruldu. Sağlayıcı tamamlanan kullanımı kotana yansıtabilir.');
     return;
   }
   worker?.postMessage({ type: 'stop' });
@@ -308,7 +339,10 @@ function closeVoice() {
 $('composer').addEventListener('submit', event => { event.preventDefault(); sendMessage(); });
 $('message').addEventListener('input', resizeInput);
 $('message').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && matchMedia('(min-width: 761px)').matches) { event.preventDefault(); sendMessage(); } });
-$('start-engine').addEventListener('click', openCloudDialog);
+$('start-engine').addEventListener('click', () => {
+  if (!hostedEndpoint) return openCloudDialog();
+  startHostedChat(); $('message').focus();
+});
 $('cancel-load').addEventListener('click', () => { resetEngine(); notice('Hazırlık durduruldu. Yeniden başlatarak devam edebilirsin.'); });
 $('stop').addEventListener('click', stopGeneration);
 $('dictate').addEventListener('click', () => voice.listening ? voice.stopListening() : voice.listen());
@@ -406,6 +440,10 @@ $('cloud-connect').addEventListener('click', async () => {
 $('cloud-local').addEventListener('click', () => { if (busy) return; resetEngine(); $('cloud-dialog').close(); loadEngine(); });
 if (!settings.saveHistory) { try { localStorage.removeItem(HISTORY_KEY); } catch {} }
 if (!voice.canListen) $('dictate').title = 'Mikrofonla yazdırma bu tarayıcıda desteklenmiyor';
+if (hostedEndpoint) {
+  $('setup-description').textContent = 'Hesap açmadan sohbet et. Mesajların Aslı AI sunucusu üzerinden işlenir.';
+  $('hosted-about').hidden = false;
+}
 renderConversation(); renderHistory(); resizeInput();
 setupAvatar({ input: $('avatar-file'), change: $('change-avatar'), reset: $('reset-avatar'), images: document.querySelectorAll('[data-avatar]'), notify: text => { $('voice-state').textContent = text; announce(text); } });
 if (window.ResizeObserver) new ResizeObserver(entries => { document.documentElement.style.setProperty('--composer-height', `${Math.ceil(entries[0].target.getBoundingClientRect().height)}px`); }).observe(document.querySelector('.compose-area'));

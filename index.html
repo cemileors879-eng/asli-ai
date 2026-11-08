@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="tr">
 <head>
+  <meta name="asli-chat-endpoint" content="">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#fffcf4">
@@ -92,7 +93,7 @@
   </dialog>
   <dialog id="about-dialog" class="settings-dialog" aria-labelledby="about-heading">
     <div class="dialog-head"><h2 id="about-heading">Aslı nasıl çalışır?</h2><button class="icon-button" data-close="about-dialog" aria-label="Bilgiyi kapat"><svg><use href="#i-close"/></svg></button></div>
-    <div class="about-copy"><p>Aslı AI bir yapay zekâ asistanıdır; fotoğraftaki gerçek Aslı değildir.</p><p>Aslı'yı model indirmeden kullanmak için Puter hesabınla bağlan. Mesajların Puter ve model sağlayıcısına iletilir; kullanım hesabının kotasından düşer. Ücretsiz kota sınırlıdır ve ek kullanım ücretli olabilir.</p><p>İsteğe bağlı cihaz modu küçük bir dil modeli indirir. Bu mod her telefonda açılamayabilir; Türkçe kalitesi de sınırlıdır. Cihaz modunda sohbetin model çıkarımı sunucuya gönderilmez. Aslı internette arama yapmaz ve güncel haberleri doğrulayamaz.</p><p>Seslendirme cihazındaki konuşma sesini kullanır. Türkçe ses yoksa cihazının ses ayarlarından yükleyebilirsin. Mikrofonla yazdırma tarayıcının konuşma tanımasını kullanır; tarayıcına bağlı olarak sesin sağlayıcının sunucularında işlenebilir. Mikrofon yalnızca sen başlattığında açılır.</p><p>Yeni sohbet açınca önceki konuşma modelin bağlamından çıkarılır. “Sohbetleri bu cihazda sakla” kapalıyken sohbetler sayfa kapanınca kaybolur. Ayarlar ve indirilen model önbelleği ayrı tutulur.</p><a href="https://huggingface.co/onnx-community/Qwen3-1.7B-ONNX" target="_blank" rel="noopener noreferrer">İsteğe bağlı cihaz modelleri: Qwen3 0.6B / 1.7B</a></div>
+    <div class="about-copy"><p>Aslı AI bir yapay zekâ asistanıdır; fotoğraftaki gerçek Aslı değildir.</p><p id="hosted-about" hidden>Hesapsız sohbet modunda mesajların Aslı AI sunucusu ve Cloudflare Workers AI tarafından işlenir. Kullanım günlük ortak kotaya tabidir.</p><p>Alternatif Puter modunu kullanmak için Puter hesabınla bağlan. Mesajların Puter ve model sağlayıcısına iletilir; kullanım hesabının kotasından düşer. Ücretsiz kota sınırlıdır ve ek kullanım ücretli olabilir.</p><p>İsteğe bağlı cihaz modu küçük bir dil modeli indirir. Bu mod her telefonda açılamayabilir; Türkçe kalitesi de sınırlıdır. Cihaz modunda sohbetin model çıkarımı sunucuya gönderilmez. Aslı internette arama yapmaz ve güncel haberleri doğrulayamaz.</p><p>Seslendirme cihazındaki konuşma sesini kullanır. Türkçe ses yoksa cihazının ses ayarlarından yükleyebilirsin. Mikrofonla yazdırma tarayıcının konuşma tanımasını kullanır; tarayıcına bağlı olarak sesin sağlayıcının sunucularında işlenebilir. Mikrofon yalnızca sen başlattığında açılır.</p><p>Yeni sohbet açınca önceki konuşma modelin bağlamından çıkarılır. “Sohbetleri bu cihazda sakla” kapalıyken sohbetler sayfa kapanınca kaybolur. Ayarlar ve indirilen model önbelleği ayrı tutulur.</p><a href="https://huggingface.co/onnx-community/Qwen3-1.7B-ONNX" target="_blank" rel="noopener noreferrer">İsteğe bağlı cihaz modelleri: Qwen3 0.6B / 1.7B</a></div>
   </dialog>
   <dialog id="cloud-dialog" class="settings-dialog" aria-labelledby="cloud-heading">
     <div class="dialog-head"><h2 id="cloud-heading">Aslı'ya bağlan</h2><button class="icon-button" data-close="cloud-dialog" aria-label="Bağlantı penceresini kapat"><svg><use href="#i-close"/></svg></button></div>
@@ -113,6 +114,6 @@
     <div class="voice-controls"><button class="voice-main-button" id="voice-listen"><svg><use href="#i-mic"/></svg><span>Konuşmaya başla</span></button><button class="secondary-button voice-end" id="voice-stop"><svg><use href="#i-close"/></svg>Sohbeti bitir</button><label class="hands-free"><input id="hands-free" type="checkbox" checked>Kesintisiz sohbet: yanıttan sonra beni dinle</label><p class="voice-privacy">Konuşma tanıma tarayıcının ses hizmetini kullanabilir.<br>Seçtiğin yeni avatar yalnızca bu tarayıcıda saklanır.</p></div>
   </dialog>
   <div class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></div>
-  <script type="module" src="./app.js?v=20261108-langchain-1"></script>
+  <script type="module" src="./app.js?v=20261108-hosted-1"></script>
 </body>
 </html>
