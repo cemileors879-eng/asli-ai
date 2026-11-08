@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateCloud } from './cloud.mjs';
+import { createCloudChain, generateCloud } from './cloud.mjs';
 
 test('cloud requests require an explicit signed-in session', async () => {
   let called = false;
@@ -23,4 +23,35 @@ test('cancelled streams never append another text chunk', async () => {
   const puter = { auth: { isSignedIn: () => true }, ai: { chat: async () => (async function*() { controller.abort(); yield { type: 'text', text: 'late' }; })() } };
   await assert.rejects(generateCloud(puter, [], controller.signal, text => streamed.push(text)));
   assert.deepEqual(streamed, []);
+});
+
+test('the LangChain steps pass context to Puter once and preserve a failed stream', async () => {
+  const chain = createCloudChain({
+    RunnableLambda: { from: fn => fn },
+    RunnableSequence: {
+      from: ([format, stream]) => ({ invoke: request => stream(format(request)) }),
+    },
+  });
+  const messages = [{ role: 'user', content: 'Merhaba' }];
+  const streamed = [];
+  let calls = 0;
+  const puter = {
+    auth: { isSignedIn: () => true },
+    ai: {
+      async *chat(context) {
+        calls++;
+        assert.equal(context[0].role, 'system');
+        assert.deepEqual(context.slice(1), messages);
+        yield { type: 'text', text: 'Merhaba' };
+        yield { type: 'error', message: 'quota exceeded' };
+      },
+    },
+  };
+  const signal = new AbortController().signal;
+  await assert.rejects(
+    generateCloud(puter, messages, signal, text => streamed.push(text), Promise.resolve(chain)),
+    error => error.message === 'quota exceeded' && error.partial === 'Merhaba',
+  );
+  assert.equal(calls, 1);
+  assert.deepEqual(streamed, ['Merhaba']);
 });

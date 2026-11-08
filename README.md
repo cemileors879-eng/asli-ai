@@ -47,3 +47,5 @@ Bağımlılıklar sürümlere sabitlenmiştir: Transformers.js 3.8.1 ve Qwen3 ON
 ## Gelişmiş sohbet
 
 “Gelişmiş sohbet” düğmesiyle Puter hesabına bağlanarak GPT-5.4 Nano kullanılabilir. Bu seçenek model indirmesi gerektirmez; mesajlar Puter ve model sağlayıcısına iletilir. Puter oturumu kullanıcı tıklamasıyla açılır; bağlantı kurulunca önceki sohbetin aktarılmaması için yeni sohbet başlatılır. Kullanım kullanıcının Puter hesabına aittir; ücretsiz kota sınırlıdır ve ek kullanım ücretli olabilir. Durdurmak sağlayıcıya ulaşmış isteğin ücretlendirmesini tamamen iptal etmeyebilir. Sağlayıcı hesap bağlantısı gerektirdiğinden canlı bulut yanıtı bu oturumda doğrulanmadı. Kota bilgisi: https://docs.puter.com/user-pays-model/
+
+Gelişmiş sohbet, Aslı’nın sistem talimatını ve mevcut konuşma bağlamını hazırlamak ve Puter’ın akışlı yanıtını işlemek için LangChain.js Core kullanır. Bağlantı penceresi açıldığında sabitlenmiş sürüm tarayıcıya yüklenir. Kütüphane yüklenemezse mevcut Puter akışı kullanılır. Cihaz modu bu kütüphaneye ihtiyaç duymaz.

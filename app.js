@@ -1,6 +1,6 @@
 import { cleanSettings, cleanSessions, modelMessages, SETTINGS_KEY, HISTORY_KEY } from './core.mjs';
 import { Voice } from './voice.js';
-import { generateCloud } from './cloud.mjs';
+import { generateCloud, loadCloudChain } from './cloud.mjs?v=20261108-langchain-1';
 import { SpeechStream } from './voice-stream.mjs';
 import { setupAvatar } from './avatar.mjs';
 
@@ -25,6 +25,7 @@ let handsFreeTimer;
 let noticeTimer;
 let engineKind = 'cloud';
 let cloudAbort;
+let cloudChain;
 let sdkPromise;
 let speechStream;
 let voicePaused = false;
@@ -272,7 +273,7 @@ function sendMessage(text = $('message').value) {
     const id = requestId; cloudAbort = new AbortController();
     const controller = cloudAbort;
     const timer = setTimeout(() => controller.abort(), 90000);
-    generateCloud(window.puter, modelMessages(current.messages), controller.signal, text => handleEngine({ data: { type: 'token', requestId: id, text } }))
+    generateCloud(window.puter, modelMessages(current.messages), controller.signal, text => handleEngine({ data: { type: 'token', requestId: id, text } }), cloudChain)
       .then(text => handleEngine({ data: { type: 'done', requestId: id, text } }))
       .catch(error => {
         if (id !== requestId || !busy) return;
@@ -378,6 +379,11 @@ async function openCloudDialog() {
   if (busy || loading) return notice('Önce devam eden yanıtı veya model hazırlığını durdur.');
   if ($('voice-dialog').open) closeVoice();
   if (!$('cloud-dialog').open) $('cloud-dialog').showModal(); $('cloud-connect').disabled = true; $('cloud-state').textContent = 'Bağlantı hazırlanıyor…';
+  $('cloud-chain-state').textContent = 'LangChain hazırlanıyor…';
+  cloudChain = loadCloudChain();
+  cloudChain.then(chain => {
+    $('cloud-chain-state').textContent = chain ? 'LangChain hazır.' : 'Standart sohbet hazır. LangChain bağlantısı kurulamadı.';
+  });
   try { await loadCloudSdk(); $('cloud-connect').disabled = false; $('cloud-state').textContent = 'Puter giriş penceresi düğmeye dokunduğunda açılır.'; }
   catch { $('cloud-state').textContent = 'Puter bağlantısı yüklenemedi. İnternetini kontrol edip pencereyi yeniden açabilir veya cihaz modunu kullanabilirsin.'; }
 }
