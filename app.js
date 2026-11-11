@@ -337,7 +337,13 @@ $('save-history').addEventListener('change', event => {
 });
 $('test-voice').addEventListener('click', () => { if (voice.speaking) voice.cancelSpeech(); else voice.speak('Merhaba, ben Aslı. İstersen sohbet edelim. Seni dinliyorum.'); });
 $('settings-dialog').addEventListener('close', () => voice.cancelSpeech());
+const clearHistoryDialog = $('clear-history-dialog');
 $('clear-history').addEventListener('click', () => {
+  clearHistoryDialog.returnValue = '';
+  clearHistoryDialog.showModal();
+});
+clearHistoryDialog.addEventListener('close', () => {
+  if (clearHistoryDialog.returnValue !== 'clear') return;
   if (busy) stopGeneration();
   voice.stopListening(true); voice.cancelSpeech(); pendingPrompt = ''; sessions = []; current = newSession();
   try { localStorage.removeItem(HISTORY_KEY); } catch {}
