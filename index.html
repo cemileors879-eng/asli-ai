@@ -88,7 +88,15 @@
     <div class="setting-block"><label for="speech-rate">Konuşma hızı <output id="rate-label">1×</output></label><input type="range" id="speech-rate" min="0.7" max="1.3" step="0.05" value="1"><button class="secondary-button" id="test-voice"><svg><use href="#i-volume"/></svg>Aslı'nın sesini dinle</button></div>
     <div class="setting-line"><label for="save-history"><strong>Sohbetleri bu cihazda sakla</strong><span>Varsayılan olarak sohbetler sayfa kapanınca silinir.</span></label><input type="checkbox" class="switch" id="save-history"></div>
     <div class="setting-block"><label for="engine-mode">Çalışma modu</label><select id="engine-mode"><option value="auto">Otomatik · cihazıma uygun</option><option value="wasm">Uyumlu mod · işlemci kullan</option></select><p>Model açılmıyorsa uyumlu modu seç. Değişiklik bir sonraki başlatmada uygulanır.</p></div>
-    <div class="dialog-foot"><button class="secondary-button" id="export-chat"><svg><use href="#i-download"/></svg>Sohbeti indir</button><button class="text-button danger" id="clear-history">Geçmişi temizle</button></div>
+    <div class="dialog-foot"><button class="secondary-button" id="export-chat"><svg><use href="#i-download"/></svg>Sohbeti indir</button><button class="text-button danger" id="clear-history" aria-haspopup="dialog" aria-controls="clear-history-dialog">Geçmişi temizle</button></div>
+  </dialog>
+  <dialog id="clear-history-dialog" class="settings-dialog" aria-labelledby="clear-history-heading" aria-describedby="clear-history-description">
+    <div class="dialog-head"><h2 id="clear-history-heading">Sohbet geçmişi temizlensin mi?</h2></div>
+    <p class="dialog-intro" id="clear-history-description">Bu cihazdaki sohbetler silinecek. Bu işlem geri alınamaz.</p>
+    <form method="dialog" class="dialog-foot">
+      <button class="secondary-button" value="cancel" autofocus>Vazgeç</button>
+      <button class="text-button danger" value="clear">Geçmişi temizle</button>
+    </form>
   </dialog>
   <dialog id="about-dialog" class="settings-dialog" aria-labelledby="about-heading">
     <div class="dialog-head"><h2 id="about-heading">Aslı nasıl çalışır?</h2><button class="icon-button" data-close="about-dialog" aria-label="Bilgiyi kapat"><svg><use href="#i-close"/></svg></button></div>
@@ -113,6 +121,6 @@
     <div class="voice-controls"><button class="voice-main-button" id="voice-listen"><svg><use href="#i-mic"/></svg><span>Konuşmaya başla</span></button><button class="secondary-button voice-end" id="voice-stop"><svg><use href="#i-close"/></svg>Sohbeti bitir</button><label class="hands-free"><input id="hands-free" type="checkbox" checked>Kesintisiz sohbet: yanıttan sonra beni dinle</label><p class="voice-privacy">Konuşma tanıma tarayıcının ses hizmetini kullanabilir.<br>Seçtiğin yeni avatar yalnızca bu tarayıcıda saklanır.</p></div>
   </dialog>
   <div class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></div>
-  <script type="module" src="./app.js?v=20261108-langchain-1"></script>
+  <script type="module" src="./app.js?v=20261111-history-dialog"></script>
 </body>
 </html>
